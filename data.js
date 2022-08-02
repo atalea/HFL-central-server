@@ -74,7 +74,7 @@
            for (let j = 0; j < imageData.data.length / 4; j++) {
              // All channels hold an equal value since the image is grayscale, so
              // just read the red channel.
-             datasetBytesView[j] = imageData.data[j * 4] / 255;
+             datasetBytesView[j] = imageData.data[j * 4] / 255 //TODO: maybe change the normalization
            }
          }
          this.datasetImages = new Float32Array(datasetBytesBuffer);
