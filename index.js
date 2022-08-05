@@ -98,8 +98,11 @@ app.get("/receive/start", async (req, res, next) => {
 app.put("/register/edge-server", async (req, res, next) => {
   console.log(req.ip)
   console.log(servers)
-  if (!servers.filter((ip) => req.ip == ip).length) {
-    servers.push(req.ip)
+  const new_ip = req.ip.startsWith('::ffff:') ? req.ip.slice(7) : req.ip
+
+  if (!servers.filter((ip) => new_ip == ip).length) {
+    
+    servers.push(new_ip)
     await fs.writeFile("./edge-servers.json", JSON.stringify({ servers }))
     res.send("ip added!")
   } else {
