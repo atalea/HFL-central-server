@@ -15,8 +15,8 @@
  * =============================================================================
  */
 
- import * as tf from '@tensorflow/tfjs';
-
+ 
+const tf = require('@tensorflow/tfjs')
  const IMAGE_SIZE = 784;
  const NUM_CLASSES = 10;
  const NUM_DATASET_ELEMENTS = 65000;
@@ -37,7 +37,7 @@
   * NOTE: This will get much easier. For now, we do data fetching and
   * manipulation manually.
   */
- export class MnistData {
+class MnistData {
    constructor() {
      this.shuffledTrainIndex = 0;
      this.shuffledTestIndex = 0;
@@ -143,4 +143,8 @@
  
      return {xs, labels};
    }
+ }
+
+ module.exports = {
+  MnistData
  }

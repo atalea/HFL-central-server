@@ -14,10 +14,10 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 const { servers } = require("./edge-servers.json")
 const { NetworkCount, callApi } = require("./util");
-const { MnistData } = require("./data");
+// const { MnistData } = require("./data");
 
-const mnist = new MnistData()
-await mnist.load()
+// const mnist = new MnistData()
+// mnist.load()
 
 const currentModel = tf.sequential();
 
@@ -111,7 +111,7 @@ app.post("/send/training-data-mnist", (req, res, next) => {
   res.send({
     headers:{auth:'Bearer ' + process.env.TOKEN},
     model:currentModel,
-    trainingData:mnist.nextTestBatch()
+    // trainingData:mnist.nextTestBatch()
     })
 })
 
