@@ -12,12 +12,21 @@ app.use(cors())
 app.use(morgan("dev"))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
-const { servers } = require("./.edge-servers.json")
+
 const { NetworkCount, callApi } = require("./util");
+const { readFile } = require("fs");
 // const { MnistData } = require("./data");
 
 // const mnist = new MnistData()
 // mnist.load()
+const setup = async () => {
+  const files = await fs.readdir(process.cwd())
+  if(files.filter(f=>f===".edge-servers.json").length === 0) {
+    fs.writeFile("./.edge-servers.json", JSON.stringify({ servers:[] }))
+  }
+}
+
+setup()
 
 const currentModel = tf.sequential();
 
@@ -97,6 +106,7 @@ app.get("/receive/start", async (req, res, next) => {
 
 app.put("/register/edge-server", async (req, res, next) => {
   console.log(req.ip)
+  const {servers} = readFile('./.edge-servers.json')
   console.log(servers)
   const new_ip = req.ip.startsWith('::ffff:') ? req.ip.slice(7) : req.ip
 
