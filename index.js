@@ -103,7 +103,7 @@ app.put("/register/edge-server", async (req, res, next) => {
   if (!servers.filter((ip) => new_ip == ip).length) {
     
     servers.push(new_ip)
-    await fs.writeFile("./edge-servers.json", JSON.stringify({ servers }))
+    await fs.writeFile("./.edge-servers.json", JSON.stringify({ servers }))
     res.send("ip added!")
   } else {
     res.send("no ip added")
