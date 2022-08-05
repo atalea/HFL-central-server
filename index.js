@@ -14,7 +14,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
 const { NetworkCount, callApi } = require("./util");
-const { readFile } = require("fs");
+const { readFileSync } = require("fs");
 // const { MnistData } = require("./data");
 
 // const mnist = new MnistData()
@@ -106,7 +106,8 @@ app.get("/receive/start", async (req, res, next) => {
 
 app.put("/register/edge-server", async (req, res, next) => {
   console.log(req.ip)
-  const {servers} = readFile('./.edge-servers.json')
+  const jsonData = await fs.readFile('./.edge-servers.json')
+  const {servers} = JSON.parse(jsonData)
   console.log(servers)
   const new_ip = req.ip.startsWith('::ffff:') ? req.ip.slice(7) : req.ip
 
