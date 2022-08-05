@@ -13,7 +13,11 @@ app.use(morgan("dev"))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 const { servers } = require("./edge-servers.json")
-const { NetworkCount, callApi } = require("./util")
+const { NetworkCount, callApi } = require("./util");
+const { MnistData } = require("./data");
+
+const mnist = new MnistData()
+await mnist.load()
 
 const currentModel = tf.sequential();
 
@@ -104,11 +108,15 @@ app.put("/register/edge-server", async (req, res, next) => {
 })
 
 app.post("/send/training-data-mnist", (req, res, next) => {
-  //send random part of the training data plus the model to be trained
+  res.send({
+    headers:{auth:'Bearer ' + process.env.TOKEN},
+    model:currentModel,
+    trainingData:mnist.nextTestBatch()
+    })
 })
 
 app.get("/", (req, res, next) => {
-  res.send("server do be running!")
+  res.send("server is running!")
 })
 
 app.use("*", (req, res, next) => {
