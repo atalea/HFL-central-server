@@ -12,7 +12,7 @@ app.use(cors())
 app.use(morgan("dev"))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
-const { servers } = require("./edge-servers.json")
+const { servers } = require("./.edge-servers.json")
 const { NetworkCount, callApi } = require("./util");
 // const { MnistData } = require("./data");
 
