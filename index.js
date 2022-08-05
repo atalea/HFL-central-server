@@ -15,6 +15,8 @@ app.use(express.urlencoded({ extended: false }));
 const {servers} = require("./edge-servers.json")
 const { NetworkCount, callApi } = require('./util');
 
+const currentModel = tf.sequential();
+
 //require token
 app.use("*",(req,res,next)=>{
     const prefix = "Bearer ";
@@ -54,11 +56,12 @@ app.post('/recieve/start',async (req,res,next)=>{
     }
 
 
-    //do convex op here
+    //do convex optimization here
     iterations.global = 3
     iterations.edge_server = 6
     iterations.local = 5
 
+    //iterate over each edge server asking it to run aggregation on viable clients
     const results = []
     for (let i = 0; i < iterations.global; i++) {
         try {
