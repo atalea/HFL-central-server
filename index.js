@@ -30,7 +30,7 @@ const setup = async () => {
 }
 
 setup()
-
+//model to train
 const currentModel = tf.sequential();
 
 //require token
@@ -49,17 +49,7 @@ app.use("*", (req, res, next) => {
 app.get("/receive/start", async (req, res, next) => {
   //do convex op
   //determine iterations
-  // try {
-  //   const tempModel = tf.sequential()
-  //   model.add(
-  //     tf.layers.dense({ units: 1, inputShape: [100], activation: "sigmoid" })
-  //   )
-  //   const saveResult = await model.save("http://localhost:3000/upload")
-  //   console.log(saveResult)
-  // } catch (error) {
-  //   console.error(error)
-  // }
-
+  
     const iterations = new NetworkCount()
 
     //get viable edge-servers and clients
@@ -123,7 +113,7 @@ app.put("/register/edge-server", async (req, res, next) => {
     res.send("no ip added")
   }
 })
-
+//send data & model to edge-servers
 app.post("/send/training-data-mnist", (req, res, next) => {
   res.send({
     headers:{auth:'Bearer ' + process.env.TOKEN},
