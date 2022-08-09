@@ -24,6 +24,9 @@ const setup = async () => {
   if(files.filter(f=>f===".edge-servers.json").length === 0) {
     fs.writeFile("./.edge-servers.json", JSON.stringify({ servers:[] }))
   }
+  if(files.filter(f=>f===".env").length === 0) {
+    fs.writeFile("./.env", "TOKEN=token")
+  }
 }
 
 setup()
