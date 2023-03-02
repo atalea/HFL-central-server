@@ -5,7 +5,7 @@ const app = express();
 const tf = require('@tensorflow/tfjs');
 const fs = require('fs/promises')
 const PORT = 3001
-// const axios = require('axios')
+//const axios = require('axios')
 require("dotenv").config()
 const token = process.env.TOKEN
 app.use(cors())
@@ -15,10 +15,10 @@ app.use(express.urlencoded({ extended: false }))
 
 const { NetworkCount, callApi } = require("./util");
 const { readFileSync } = require("fs");
-// const { MnistData } = require("./data");
+const { MnistData } = require("./data");
 
-// const mnist = new MnistData()
-// mnist.load()
+const mnist = new MnistData()
+mnist.load()
 const setup = async () => {
   const files = await fs.readdir(process.cwd())
   if(files.filter(f=>f===".edge-servers.json").length === 0) {
@@ -103,7 +103,7 @@ app.put("/register/edge-server", async (req, res, next) => {
   const {servers} = JSON.parse(jsonData)
   console.log(servers)
   const new_ip = req.ip.startsWith('::ffff:') ? req.ip.slice(7) : req.ip
-
+  console.log(new_ip)
   if (!servers.filter((ip) => new_ip == ip).length) {
     
     servers.push(new_ip)
@@ -118,7 +118,7 @@ app.post("/send/training-data-mnist", (req, res, next) => {
   res.send({
     headers:{auth:'Bearer ' + process.env.TOKEN},
     model:currentModel,
-    // trainingData:mnist.nextTestBatch()
+    trainingData:mnist.nextTestBatch()
     })
 })
 
