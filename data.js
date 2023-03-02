@@ -186,4 +186,4 @@ class MnistData {
 
 module.exports = {
   MnistData
-}
+};
