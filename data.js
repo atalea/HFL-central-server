@@ -15,136 +15,175 @@
  * =============================================================================
  */
 
- 
-const tf = require('@tensorflow/tfjs')
- const IMAGE_SIZE = 784;
- const NUM_CLASSES = 10;
- const NUM_DATASET_ELEMENTS = 65000;
- 
- const TRAIN_TEST_RATIO = 5 / 6;
- 
- const NUM_TRAIN_ELEMENTS = Math.floor(TRAIN_TEST_RATIO * NUM_DATASET_ELEMENTS);
- const NUM_TEST_ELEMENTS = NUM_DATASET_ELEMENTS - NUM_TRAIN_ELEMENTS;
- 
- const MNIST_IMAGES_SPRITE_PATH =
-     'https://storage.googleapis.com/learnjs-data/model-builder/mnist_images.png';
- const MNIST_LABELS_PATH =
-     'https://storage.googleapis.com/learnjs-data/model-builder/mnist_labels_uint8';
- 
- /**
-  * A class that fetches the sprited MNIST dataset and returns shuffled batches.
-  *
-  * NOTE: This will get much easier. For now, we do data fetching and
-  * manipulation manually.
-  */
-class MnistData {
-   constructor() {
-     this.shuffledTrainIndex = 0;
-     this.shuffledTestIndex = 0;
-   }
- 
-   async load() {
-     // Make a request for the MNIST sprited image.
-     const img = new Image();
-     const canvas = document.createElement('canvas');
-     const ctx = canvas.getContext('2d');
-     const imgRequest = new Promise((resolve, reject) => {
-       img.crossOrigin = '';
-       img.onload = () => {
-         img.width = img.naturalWidth;
-         img.height = img.naturalHeight;
- 
-         const datasetBytesBuffer =
-             new ArrayBuffer(NUM_DATASET_ELEMENTS * IMAGE_SIZE * 4);
- 
-         const chunkSize = 5000;
-         canvas.width = img.width;
-         canvas.height = chunkSize;
- 
-         for (let i = 0; i < NUM_DATASET_ELEMENTS / chunkSize; i++) {
-           const datasetBytesView = new Float32Array(
-               datasetBytesBuffer, i * IMAGE_SIZE * chunkSize * 4,
-               IMAGE_SIZE * chunkSize);
-           ctx.drawImage(
-               img, 0, i * chunkSize, img.width, chunkSize, 0, 0, img.width,
-               chunkSize);
- 
-           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
- 
-           for (let j = 0; j < imageData.data.length / 4; j++) {
-             // All channels hold an equal value since the image is grayscale, so
-             // just read the red channel.
-             datasetBytesView[j] = imageData.data[j * 4] / 255 //TODO: maybe change the normalization
-           }
-         }
-         this.datasetImages = new Float32Array(datasetBytesBuffer);
- 
-         resolve();
-       };
-       img.src = MNIST_IMAGES_SPRITE_PATH;
-     });
- 
-     const labelsRequest = fetch(MNIST_LABELS_PATH);
-     const [imgResponse, labelsResponse] =
-         await Promise.all([imgRequest, labelsRequest]);
- 
-     this.datasetLabels = new Uint8Array(await labelsResponse.arrayBuffer());
- 
-     // Create shuffled indices into the train/test set for when we select a
-     // random dataset element for training / validation.
-     this.trainIndices = tf.util.createShuffledIndices(NUM_TRAIN_ELEMENTS);
-     this.testIndices = tf.util.createShuffledIndices(NUM_TEST_ELEMENTS);
- 
-     // Slice the the images and labels into train and test sets.
-     this.trainImages =
-         this.datasetImages.slice(0, IMAGE_SIZE * NUM_TRAIN_ELEMENTS);
-     this.testImages = this.datasetImages.slice(IMAGE_SIZE * NUM_TRAIN_ELEMENTS);
-     this.trainLabels =
-         this.datasetLabels.slice(0, NUM_CLASSES * NUM_TRAIN_ELEMENTS);
-     this.testLabels =
-         this.datasetLabels.slice(NUM_CLASSES * NUM_TRAIN_ELEMENTS);
-   }
- 
-   nextTrainBatch(batchSize) {
-     return this.nextBatch(
-         batchSize, [this.trainImages, this.trainLabels], () => {
-           this.shuffledTrainIndex =
-               (this.shuffledTrainIndex + 1) % this.trainIndices.length;
-           return this.trainIndices[this.shuffledTrainIndex];
-         });
-   }
- 
-   nextTestBatch(batchSize) {
-     return this.nextBatch(batchSize, [this.testImages, this.testLabels], () => {
-       this.shuffledTestIndex =
-           (this.shuffledTestIndex + 1) % this.testIndices.length;
-       return this.testIndices[this.shuffledTestIndex];
-     });
-   }
- 
-   nextBatch(batchSize, data, index) {
-     const batchImagesArray = new Float32Array(batchSize * IMAGE_SIZE);
-     const batchLabelsArray = new Uint8Array(batchSize * NUM_CLASSES);
- 
-     for (let i = 0; i < batchSize; i++) {
-       const idx = index();
- 
-       const image =
-           data[0].slice(idx * IMAGE_SIZE, idx * IMAGE_SIZE + IMAGE_SIZE);
-       batchImagesArray.set(image, i * IMAGE_SIZE);
- 
-       const label =
-           data[1].slice(idx * NUM_CLASSES, idx * NUM_CLASSES + NUM_CLASSES);
-       batchLabelsArray.set(label, i * NUM_CLASSES);
-     }
- 
-     const xs = tf.tensor2d(batchImagesArray, [batchSize, IMAGE_SIZE]);
-     const labels = tf.tensor2d(batchLabelsArray, [batchSize, NUM_CLASSES]);
- 
-     return {xs, labels};
-   }
- }
+const tf = require('@tensorflow/tfjs');
+const assert = require('assert');
+const fs = require('fs');
+const https = require('https');
+const util = require('util');
+const zlib = require('zlib');
 
- module.exports = {
+const readFile = util.promisify(fs.readFile);
+
+// MNIST data constants:
+const BASE_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/';
+const TRAIN_IMAGES_FILE = 'train-images-idx3-ubyte';
+const TRAIN_LABELS_FILE = 'train-labels-idx1-ubyte';
+const TEST_IMAGES_FILE = 't10k-images-idx3-ubyte';
+const TEST_LABELS_FILE = 't10k-labels-idx1-ubyte';
+const IMAGE_HEADER_MAGIC_NUM = 2051;
+const IMAGE_HEADER_BYTES = 16;
+const IMAGE_HEIGHT = 28;
+const IMAGE_WIDTH = 28;
+const IMAGE_FLAT_SIZE = IMAGE_HEIGHT * IMAGE_WIDTH;
+const LABEL_HEADER_MAGIC_NUM = 2049;
+const LABEL_HEADER_BYTES = 8;
+const LABEL_RECORD_BYTE = 1;
+const LABEL_FLAT_SIZE = 10;
+
+// Downloads a test file only once and returns the buffer for the file.
+async function fetchOnceAndSaveToDiskWithBuffer(filename) {
+  return new Promise(resolve => {
+    const url = `${BASE_URL}${filename}.gz`;
+    if (fs.existsSync(filename)) {
+      resolve(readFile(filename));
+      return;
+    }
+    const file = fs.createWriteStream(filename);
+    console.log(`  * Downloading from: ${url}`);
+    https.get(url, (response) => {
+      const unzip = zlib.createGunzip();
+      response.pipe(unzip).pipe(file);
+      unzip.on('end', () => {
+        resolve(readFile(filename));
+      });
+    });
+  });
+}
+
+function loadHeaderValues(buffer, headerLength) {
+  const headerValues = [];
+  for (let i = 0; i < headerLength / 4; i++) {
+    // Header data is stored in-order (aka big-endian)
+    headerValues[i] = buffer.readUInt32BE(i * 4);
+  }
+  return headerValues;
+}
+
+async function loadImages(filename) {
+  const buffer = await fetchOnceAndSaveToDiskWithBuffer(filename);
+
+  const headerBytes = IMAGE_HEADER_BYTES;
+  const recordBytes = IMAGE_HEIGHT * IMAGE_WIDTH;
+
+  const headerValues = loadHeaderValues(buffer, headerBytes);
+  assert.equal(headerValues[0], IMAGE_HEADER_MAGIC_NUM);
+  assert.equal(headerValues[2], IMAGE_HEIGHT);
+  assert.equal(headerValues[3], IMAGE_WIDTH);
+
+  const images = [];
+  let index = headerBytes;
+  while (index < buffer.byteLength) {
+    const array = new Float32Array(recordBytes);
+    for (let i = 0; i < recordBytes; i++) {
+      // Normalize the pixel values into the 0-1 interval, from
+      // the original 0-255 interval.
+      array[i] = buffer.readUInt8(index++) / 255;
+    }
+    images.push(array);
+  }
+
+  assert.equal(images.length, headerValues[1]);
+  return images;
+}
+
+async function loadLabels(filename) {
+  const buffer = await fetchOnceAndSaveToDiskWithBuffer(filename);
+
+  const headerBytes = LABEL_HEADER_BYTES;
+  const recordBytes = LABEL_RECORD_BYTE;
+
+  const headerValues = loadHeaderValues(buffer, headerBytes);
+  assert.equal(headerValues[0], LABEL_HEADER_MAGIC_NUM);
+
+  const labels = [];
+  let index = headerBytes;
+  while (index < buffer.byteLength) {
+    const array = new Int32Array(recordBytes);
+    for (let i = 0; i < recordBytes; i++) {
+      array[i] = buffer.readUInt8(index++);
+    }
+    labels.push(array);
+  }
+
+  assert.equal(labels.length, headerValues[1]);
+  return labels;
+}
+
+/** Helper class to handle loading training and test data. */
+class MnistData {
+  constructor() {
+    this.dataset = null;
+    this.trainSize = 0;
+    this.testSize = 0;
+    this.trainBatchIndex = 0;
+    this.testBatchIndex = 0;
+  }
+
+  /** Loads training and test data. */
+  async load() {
+    this.dataset = await Promise.all([
+      loadImages(TRAIN_IMAGES_FILE), loadLabels(TRAIN_LABELS_FILE),
+      loadImages(TEST_IMAGES_FILE), loadLabels(TEST_LABELS_FILE)
+    ]);
+    this.trainSize = this.dataset[0].length;
+    this.testSize = this.dataset[2].length;
+  }
+
+  getTrainData() {
+    return this.getData_(true);
+  }
+
+  getTestData() {
+    return this.getData_(false);
+  }
+
+  getData_(isTrainingData) {
+    let imagesIndex;
+    let labelsIndex;
+    if (isTrainingData) {
+      imagesIndex = 0;
+      labelsIndex = 1;
+    } else {
+      imagesIndex = 2;
+      labelsIndex = 3;
+    }
+    const size = this.dataset[imagesIndex].length;
+    tf.util.assert(
+        this.dataset[labelsIndex].length === size,
+        `Mismatch in the number of images (${size}) and ` +
+            `the number of labels (${this.dataset[labelsIndex].length})`);
+
+    // Only create one big array to hold batch of images.
+    const imagesShape = [size, IMAGE_HEIGHT, IMAGE_WIDTH, 1];
+    const images = new Float32Array(tf.util.sizeFromShape(imagesShape));
+    const labels = new Int32Array(tf.util.sizeFromShape([size, 1]));
+
+    let imageOffset = 0;
+    let labelOffset = 0;
+    for (let i = 0; i < size; ++i) {
+      images.set(this.dataset[imagesIndex][i], imageOffset);
+      labels.set(this.dataset[labelsIndex][i], labelOffset);
+      imageOffset += IMAGE_FLAT_SIZE;
+      labelOffset += 1;
+    }
+
+    return {
+      images: tf.tensor4d(images, imagesShape),
+      labels: tf.oneHot(tf.tensor1d(labels, 'int32'), LABEL_FLAT_SIZE).toFloat()
+    };
+  }
+}
+
+module.exports = {
   MnistData
- }
+}
