@@ -47,6 +47,8 @@ app.use("*", (req, res, next) => {
  * entrypoint for testing.
  */
 app.get("/receive/start", async (req, res, next) => {
+  const jsonData = await fs.readFile('./.edge-servers.json')
+  const {servers} = JSON.parse(jsonData)
   //do convex op
   //determine iterations
   
@@ -58,18 +60,16 @@ app.get("/receive/start", async (req, res, next) => {
       const ip = servers[i]
       try {
         const res = await callApi({
-          url: `${ip}/send/viable`,
+          url: `${ip}:3000/send/viable`,
           token,
         })
-        const data = await res.json()
 
         viable.edge_server++
-        viable.local += data.clients
+        viable.local += res.clients
       } catch (error) {
         console.error(error)
       }
     }
-
     //do convex optimization here
     iterations.global = 3
     iterations.edge_server = 6
@@ -77,33 +77,34 @@ app.get("/receive/start", async (req, res, next) => {
 
     //iterate over each edge server asking it to run aggregation on viable clients
     const results = []
-    for (let i = 0; i < iterations.global; i++) {
-      try {
-        const res = await callApi({
-          url: `${ip}/receive/train-clients`,
-          token,
-          body: {
-            iterations,
-          },
-        })
-        //parse res into TF model
+    for (let g = 0; g < iterations.global; g++) {
+      for (let i = 0; i < servers.length; i++) {
+        const ip = servers[i]
+        try {
+          const res = await callApi({
+            url: `${ip}:3000/receive/train-clients`,
+            method: "POST",
+            token,
+            body: {
+              iterations,
+            },
+          })
+          //parse res into TF model
 
-        results.push(res)
-        //https://js.tensorflow.org/api/3.18.0/#io.http
-        //aggregate current model with new model
-      } catch (error) {
-        console.error(error)
-      }
+          results.push(res)
+          //https://js.tensorflow.org/api/3.18.0/#io.http
+          //aggregate current model with new model
+        } catch (error) {
+          console.error(error)
+        }
     }
+  }
 })
 
 app.put("/register/edge-server", async (req, res, next) => {
-  console.log(req.ip)
   const jsonData = await fs.readFile('./.edge-servers.json')
   const {servers} = JSON.parse(jsonData)
-  console.log(servers)
   const new_ip = req.ip.startsWith('::ffff:') ? req.ip.slice(7) : req.ip
-  console.log(new_ip)
   if (!servers.filter((ip) => new_ip == ip).length) {
     
     servers.push(new_ip)

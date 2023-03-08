@@ -2,10 +2,10 @@ class NetworkCount {
     global
     edge_server
     local
-    constructor(g=0,e=0,l=0) {
-        if(typeof g != Number) g=0
-        if(typeof e != Number) e=0
-        if(typeof l != Number) l=0
+    constructor(g,e,l) {
+        if(!Number.isFinite(g)) g=0
+        if(!Number.isFinite(e)) e=0
+        if(!Number.isFinite(l)) l=0
         this.global = g
         this.edge_server = e
         this.local = l
@@ -13,7 +13,6 @@ class NetworkCount {
 }
 
 const callApi = async ({ url, method, token, body }) => {
-    // console.log("callApi: ", { url, method, token, body });
     try {
       const options = {
         method: method ? method.toUpperCase() : "GET",
@@ -25,15 +24,12 @@ const callApi = async ({ url, method, token, body }) => {
       if (token) {
         options.headers["Authorization"] = `Bearer ${token}`
       }
-      // console.log("request url: ", BASE_URL + url)
-      // console.log("options: ", options)
-      const response = await fetch(`${BASE_URL}${url}`, options)
+      const response = await fetch(`http://${url}`, options)
       const data = await response.json()
-      // console.log("data: ", data)
       if (data.error) throw data.error
       return data
     } catch (error) {
-      console.error("ERROR: ", error)
+      console.error("ERROR: ", error.error, error.message)
       return error
     }
   }
