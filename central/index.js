@@ -11,7 +11,7 @@ app.use(errorMiddleware);
 const upload = multer();
 
 const port = 3000;
-const host = "138.67.71.73";
+const host = "172.20.10.2";
 
 const edge_servers = {};
 
