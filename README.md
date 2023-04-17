@@ -12,7 +12,7 @@
 1. change line 3 of "start_sim.sh" to `open http://${PublicIP}:3000/start` 
 2. Follow Linux instructions.
 
-#Linux: 
+# Linux: 
 1. run `chmod +x start_central.sh` to ensure it is executeable.
 2. run `chmod +x start_sim.sh` to ensure it is executeable.
 3. run `./start_central.sh` to start central server.
