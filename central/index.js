@@ -9,23 +9,24 @@ app.use(express.json());
 app.use("/model", authMiddleware, express.static(path.join(__dirname, "model")));
 app.use(errorMiddleware);
 const upload = multer();
-
 const port = 3000;
-const host = "172.20.10.2";
+const host = process.argv[2];
 
 const edge_servers = {};
 
 // Size of dataset, split among clients
 const dataSize = 500;
 // iterations = [central, edge, client]
-const iterations = [3, 3, 3];
+const iterations = [4, 4, 4];
 let central_iterations = iterations[0];
 
 app.get('/', async (req, res) => {
-    res.json({message: 'Central Server Running'});
+    //Replace with control panel or information...
+    res.json({message: 'Hello World!'});
 });
-// Call this endpoint to start learning!
+
 app.get('/start', async (req, res) => {
+    // Call this endpoint to start the learning!
     res.json({message: 'Starting!'});
     const curModel = {};
     curModel.data = generateTrainPartitions(edge_servers, dataSize);
@@ -48,6 +49,7 @@ app.use(authMiddleware);
 
 app.post('/register', async (req, res) => {
     res.json({message: 'successfully registered!'});
+    //maybe have central generate the id itself based on request address (hash)
     edge_servers[req.body.url] = {url: req.body.url};
     console.log(`Edge server connected from ${req.body.url}!`);
 });
@@ -72,6 +74,7 @@ app.post('/upload', upload.fields([{ name: 'weights', maxCount: 1 }, { name: 'sh
     }
     edge_servers[eurl].model = decoded;
     const agg = await aggregate(edge_servers);
+    console.log(`Model accuracy: ${agg[1]}%!`);
     if (agg){
         central_iterations -= 1;
         console.log("Central Server iteration complete!");
@@ -94,5 +97,5 @@ app.get('*', async (req, res) => {
 });
 
 app.listen(port, host, async () => {
-    console.log(`Central Server running on port ${port}!`);
+    console.log(`Central Server running on port ${host}:${port}!`);
 });

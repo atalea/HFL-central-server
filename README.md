@@ -1,5 +1,7 @@
-# HFL-central-server
-work in progress
+# HFL-NodeJS
 
-#run "npm i" after any pulls
-#run start_central.bat
+# Usage Instructions
+0. Ensure you are running NodeJS 18.X.X or above!
+1. Run `npm i`
+2. Windows: run start_central.bat
+   Linux: make sure start_central.sh is executeable and run it
