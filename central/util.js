@@ -65,7 +65,7 @@ const aggregate = async (edge_servers) => {
         for (let e = 1; e < ekeys.length; e+=1){
             const emodel = edge_servers[ekeys[e]].model;
             for (let i = 0; i < emodel.length; i+=1){
-                for (let j = 0; j < emodel[i].length; c+=1){
+                for (let j = 0; j < emodel[i].length; j+=1){
                     if (e == 1) aggregatedModel[i][j] /= numEdges;
                     aggregatedModel[i][j] += emodel[i][j]/numEdges;
                 }
