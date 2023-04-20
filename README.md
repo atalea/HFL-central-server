@@ -15,6 +15,7 @@
 # Linux: 
 1. run `chmod +x start_central.sh` to ensure it is executeable.
 2. run `chmod +x start_sim.sh` to ensure it is executeable.
-3. run `./start_central.sh` to start central server.
-4. run `./start_sum.sh` to begin HFL training when all clients are connected
+3. change line 3 of "start_sim.sh" to `xdg-open http://${PublicIP}:3000/start` 
+4. run `./start_central.sh` to start central server.
+5. run `./start_sum.sh` to begin HFL training when all clients are connected
    
