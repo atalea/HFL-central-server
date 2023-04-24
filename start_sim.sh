@@ -1,6 +1,3 @@
 #!/bin/bash
-echo "Enter Port For Central:"
-read PORT
-echo "Enter Central Server IP:"
-read HOST
-google-chrome ${HOST}:${PORT}/start
+read -p "Enter Central Server IP: " HOST
+xdg-open http://${PublicIP}:3000/start

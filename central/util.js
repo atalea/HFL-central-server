@@ -10,7 +10,7 @@ const token = 'token';
 var testLbl, testImg;
 
 const testDataRead = async (filename, size) => {
-    const fbuf = await fs.readFileSync(filename);
+    const fbuf = await fs.readFile(filename);
     const gunzip = util.promisify(zlib.gunzip);
     const buf = await gunzip(fbuf);
     const ubuf = new Uint8Array(buf);

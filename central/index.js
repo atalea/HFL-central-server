@@ -12,8 +12,7 @@ const upload = multer();
 
 const edge_servers = {};
 let training_in_progress = false;
-let central_iterations = config.centralIterations;
-
+let curIterations = config.centralIterations;
 app.get('/', async (req, res) => {
     //Replace with control panel or information...
     res.json({message: 'Hello World!'});
@@ -62,7 +61,7 @@ app.post('/upload', upload.fields([{ name: 'weights', maxCount: 1 }, { name: 'sh
     const eurl = req.body.url;
     res.json({message: 'received model!'});
     console.log("Received model from edge server!");
-    console.log(`Training Time for Edge:\n\t${JSON.parse(req.body.metric)}`);
+    //console.log(`Training Time for Edge:\n\t${JSON.parse(req.body.metric)}`);
     let decoded = [];
     let ind = 0;
     //proccess recieved weights and shape
@@ -80,12 +79,11 @@ app.post('/upload', upload.fields([{ name: 'weights', maxCount: 1 }, { name: 'sh
         console.info(`Model accuracy: ${agg*100}%! (Target: ${config.centralAccuracy*100}%)`);
         if (config.centralUseIterations){
             curIterations -= 1;
-            threshold = curIterations <= 0;
+            threshold = (curIterations <= 0);
         } else{
-            threshold = curAccuracy >= config.centralAccuracy;
+            threshold = (agg >= config.centralAccuracy);
         }
-        if (threshold){
-            curIterations = config.centralIterations;
+        if (!threshold){
             await sendDownstream(edge_servers);
         } else{
             console.log("ALL DONE!!!");
