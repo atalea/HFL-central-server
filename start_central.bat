@@ -1,6 +1,6 @@
 @echo off
 title = Central Server
-for /f %%a in ('powershell Invoke-RestMethod api.ipify.org') do set PublicIP=%%a
-echo %PublicIP%
-node central\index.js %PublicIP%
+set /p "PORT=Enter Port For Central to Run on: "
+set /p "HOST=Enter Central Server IP to run on(local-IP): "
+node central\index.js
 pause
