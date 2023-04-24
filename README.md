@@ -9,7 +9,7 @@
 2. run start_sim.bat when all clients are connected.
 
 # Mac:
-1. change line 6 of "start_sim.sh" to `open -a Google\ Chrome http://${HOST}:3000/start` 
+1. change line 3 of "start_sim.sh" to `open http://${PublicIP}:3000/start` 
 2. Follow Linux instructions.
 
 # Linux: 
