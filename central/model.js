@@ -12,12 +12,4 @@ model.add(tf.layers.dense({inputShape: mparams.input, units: mparams.hidden, act
 model.add(tf.layers.dense({units: mparams.hidden, activation: 'relu'}));
 model.add(tf.layers.dense({units: mparams.output, activation: 'softmax'}));
 
-//console.log(model.summary());
-
-/*model.compile({
-  optimizer: 'adam',
-  loss: 'categoricalCrossentropy',
-  metrics: ['accuracy'],
-});*/
-
 module.exports = { model };

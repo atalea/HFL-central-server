@@ -1,2 +1,2 @@
-for /f %%a in ('powershell Invoke-RestMethod api.ipify.org') do set PublicIP=%%a
-start chrome %PublicIP%:3000/start
+set /p "HOST=Enter Central Server IP: "
+start chrome %HOST%:3000/start

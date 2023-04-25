@@ -1,40 +1,38 @@
 const express = require('express');
 const multer  = require('multer');
 const path = require('path');
-const { errorMiddleware, authMiddleware, sendDownstream, aggregate, generateTrainPartitions } = require('./util.js');
+const { errorMiddleware, authMiddleware, sendDownstream, aggregate, generateTrainPartitions, convertTypedArray } = require('./util.js');
 const { model } = require('./model.js');
-
+const config = require('./config.js');
 const app = express();
 app.use(express.json());
 app.use("/model", authMiddleware, express.static(path.join(__dirname, "model")));
 app.use(errorMiddleware);
 const upload = multer();
-const port = 3000;
-const host = process.argv[2];
 
 const edge_servers = {};
-
-// Size of dataset, split among clients
-const dataSize = 500;
-// iterations = [central, edge, client]
-const iterations = [4, 4, 4];
-let central_iterations = iterations[0];
-
+let training_in_progress = false;
+let curIterations = config.centralIterations;
 app.get('/', async (req, res) => {
     //Replace with control panel or information...
     res.json({message: 'Hello World!'});
 });
 
+//Begin the training proccess
+//Called by launching start_sim or connecting with /start
 app.get('/start', async (req, res) => {
-    // Call this endpoint to start the learning!
+    training_in_progress = true;
     res.json({message: 'Starting!'});
     const curModel = {};
-    curModel.data = generateTrainPartitions(edge_servers, dataSize);
+    //generate the indexes of which data will be sent to each client
+    curModel.data = generateTrainPartitions(edge_servers, config.dataSize);
     console.log(`Prepped data for ${curModel.data.length} edge servers. There are ${curModel.data.reduce((a, b) => a + b.length, 0)} total clients.`);
-    await model.save("file://" + path.join(__dirname, "model"));
-    curModel.model = `http://${host}:${port}/model/model.json`;
-    curModel.iterations = iterations.slice(1);
+    //save new data information on model and load model parameterss
+    await model.save("file://" + path.join(__dirname, "model")); 
+    curModel.model = `http://${config.host}:${config.port}/model/model.json`;
+    curModel.iterations = config.iterations;
     let i = 0;
+    //send initial model to all edge servers
     for (let e in edge_servers){
         const emodel = Object.assign({}, curModel);
         emodel.data = emodel.data[i];
@@ -47,25 +45,26 @@ app.get('/start', async (req, res) => {
 
 app.use(authMiddleware);
 
+//Handles edge server registration puts each into an array indexed by url
 app.post('/register', async (req, res) => {
+    if (training_in_progress) {
+        res.json({message: 'failed to register - training in progress!'});
+        return false;
+    }
     res.json({message: 'successfully registered!'});
-    //maybe have central generate the id itself based on request address (hash)
     edge_servers[req.body.url] = {url: req.body.url};
     console.log(`Edge server connected from ${req.body.url}!`);
 });
 
+//Recieves each edges trained model
 app.post('/upload', upload.fields([{ name: 'weights', maxCount: 1 }, { name: 'shape', maxCount: 1 }]), async (req, res) => {
-    function convertTypedArray(src, type) {
-        const buffer = new ArrayBuffer(src.byteLength);
-        src.constructor.from(buffer).set(src);
-        return new type(buffer);
-    }
     const eurl = req.body.url;
     res.json({message: 'received model!'});
-    console.log("Received averaged model from edge server!");
+    console.log("Received model from edge server!");
+    //console.log(`Training Time for Edge:\n\t${JSON.parse(req.body.metric)}`);
     let decoded = [];
     let ind = 0;
-    // Maybe label these with multer...
+    //proccess recieved weights and shape
     let wBuff = convertTypedArray(req.files['weights'][0].buffer, Float32Array);
     let shape = convertTypedArray(req.files['shape'][0].buffer, Uint32Array);
     for (let i = 0; i < shape.length; i += 1){
@@ -74,14 +73,21 @@ app.post('/upload', upload.fields([{ name: 'weights', maxCount: 1 }, { name: 'sh
     }
     edge_servers[eurl].model = decoded;
     const agg = await aggregate(edge_servers);
-    console.log(`Model accuracy: ${agg[1]}%!`);
     if (agg){
-        central_iterations -= 1;
+        let threshold = false;
         console.log("Central Server iteration complete!");
-        if (central_iterations > 0){
+        console.info(`Model accuracy: ${agg*100}%! (Target: ${config.centralAccuracy*100}%)`);
+        if (config.centralUseIterations){
+            curIterations -= 1;
+            threshold = (curIterations <= 0);
+        } else{
+            threshold = (agg >= config.centralAccuracy);
+        }
+        if (!threshold){
             await sendDownstream(edge_servers);
         } else{
             console.log("ALL DONE!!!");
+            training_in_progress = false;
         }
     }
 });
@@ -96,6 +102,6 @@ app.get('*', async (req, res) => {
     res.send("Page Not Found!");
 });
 
-app.listen(port, host, async () => {
-    console.log(`Central Server running on port ${host}:${port}!`);
+app.listen(config.port, config.host, async () => {
+    console.log(`Central Server running on port ${config.host}:${config.port}!`);
 });

@@ -1,3 +1,4 @@
 #!/bin/bash
-PublicIP=$(curl ifconfig.me)
-node central/index.js ${PublicIP}
+read -p "Enter Central Server IP to run on: " HOST
+export HOST
+node central/index.js

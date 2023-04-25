@@ -1,3 +1,3 @@
 #!/bin/bash
-PublicIP=$(curl ifconfig.me)
-google-chrome ${PublicIP}:3000/start
+read -p "Enter Central Server IP: " HOST
+xdg-open http://${PublicIP}:3000/start
