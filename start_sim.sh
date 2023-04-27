@@ -1,3 +1,3 @@
 #!/bin/bash
 read -p "Enter Central Server IP: " HOST
-xdg-open http://${Host}:3000/start
+xdg-open http://${HOST}:3000/start
